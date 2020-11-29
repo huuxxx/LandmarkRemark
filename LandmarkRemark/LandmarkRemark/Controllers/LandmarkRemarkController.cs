@@ -3,8 +3,9 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Mvc;
-
-// For more information on enabling Web API for empty projects, visit https://go.microsoft.com/fwlink/?LinkID=397860
+using LandmarkRemark.DTO;
+using Microsoft.Extensions.Configuration;
+using Microsoft.Data.SqlClient;
 
 namespace LandmarkRemark.Controllers
 {
@@ -12,36 +13,82 @@ namespace LandmarkRemark.Controllers
     [ApiController]
     public class LandmarkRemarkController : ControllerBase
     {
+        private readonly IConfiguration configuration;
 
-        [HttpGet]
-        public IEnumerable<string> Get()
+        // Constructor Dependency Injection
+        public LandmarkRemarkController(IConfiguration configuration)
         {
-            return new string[] { "value1", "value2" };
+            this.configuration = configuration;
         }
 
-        // GET api/<LandmarkRemarkController>/5
-        [HttpGet("{id}")]
-        public string Get(int id)
+        [HttpGet("GetMyNotes/{userID}")]
+        public async Task<IActionResult> GetMynotes(int userID)
         {
-            return "value";
+            // Return all notes of current user
+
+            return Ok();
         }
 
-        [HttpPost]
-        public void SaveNote(string note)
+        [HttpGet("GetOthersNotes/{userID}")]
+        public async Task<IActionResult> GetOthersnotes(int userID)
         {
+            // Return all notes of OTHER users
 
+            return Ok();
         }
 
-        // PUT api/<LandmarkRemarkController>/5
-        [HttpPut("{id}")]
-        public void Put(int id, [FromBody] string value)
+        [HttpGet("SearchNotes/{userName, noteText}")]
+        public async Task<IActionResult> SearchNotes(string userName, string noteText)
         {
+            if (string.IsNullOrEmpty(userName) && string.IsNullOrEmpty(noteText))
+            {
+                return BadRequest();
+            }
+
+            if (!string.IsNullOrEmpty(userName) && !string.IsNullOrEmpty(noteText))
+            {
+                // Query using both params
+                return Ok();
+            }
+
+            if (string.IsNullOrEmpty(userName) && !string.IsNullOrEmpty(noteText))
+            {
+                // Query using User Name only
+                return Ok();
+            }
+
+            if (!string.IsNullOrEmpty(userName) && string.IsNullOrEmpty(noteText))
+            {
+                // Query using Note Text only
+                return Ok();
+            }
+
+            return BadRequest();
         }
 
-        // DELETE api/<LandmarkRemarkController>/5
-        [HttpDelete("{id}")]
-        public void Delete(int id)
+        [HttpPost("SaveNote/{userID, note, coordinateX, coordinateY}")]
+        public async Task<IActionResult> SaveNote(int userId, string note, decimal coordinateX, decimal coordinateY)
         {
+            try
+            {
+                string queryString = string.Format("INSERT INTO [TableName] (userID, note, coordinateX, coordinateY) VALUES ('{0}', '{1}', '{2}', '{3}')", userId, note, coordinateX, coordinateY);
+
+                string connString = ConfigurationExtensions.GetConnectionString(configuration, "DB_ConnectionString");
+
+                using (SqlConnection connection = new SqlConnection(connString))
+                {
+                    SqlCommand command = new SqlCommand(queryString, connection);
+                    connection.Open();
+                }
+
+                return Ok();
+            }
+            catch (Exception)
+            {
+                // Log failure
+                return BadRequest();
+            }
         }
+
     }
 }
