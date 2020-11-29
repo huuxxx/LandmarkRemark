@@ -21,6 +21,11 @@ namespace LandmarkRemark.Controllers
             this.configuration = configuration;
         }
 
+        /// <summary>
+        /// Return all notes of current user
+        /// </summary>
+        /// <param name="userID">User ID the request was made from</param>
+        /// <returns></returns>
         [HttpGet("GetMyNotes/{userID}")]
         public async Task<IActionResult> GetMynotes(int userID)
         {
@@ -29,6 +34,11 @@ namespace LandmarkRemark.Controllers
             return Ok();
         }
 
+        /// <summary>
+        /// Return all notes of OTHER users
+        /// </summary>
+        /// <param name="userID">User ID the request was made from</param>
+        /// <returns></returns>
         [HttpGet("GetOthersNotes/{userID}")]
         public async Task<IActionResult> GetOthersnotes(int userID)
         {
@@ -37,35 +47,55 @@ namespace LandmarkRemark.Controllers
             return Ok();
         }
 
+        /// <summary>
+        /// Query the database for notes by User Name and/or Note Text
+        /// </summary>
+        /// <param name="userName">User Name to be queried</param>
+        /// <param name="noteText">User Name to be queried</param>
+        /// <returns></returns>
         [HttpGet("SearchNotes/{userName, noteText}")]
         public async Task<IActionResult> SearchNotes(string userName, string noteText)
         {
-            if (string.IsNullOrEmpty(userName) && string.IsNullOrEmpty(noteText))
+            try
             {
+                if (string.IsNullOrEmpty(userName) && string.IsNullOrEmpty(noteText))
+                {
+                    return BadRequest();
+                }
+
+                if (!string.IsNullOrEmpty(userName) && !string.IsNullOrEmpty(noteText))
+                {
+                    // Query using both params
+                }
+
+                if (string.IsNullOrEmpty(userName) && !string.IsNullOrEmpty(noteText))
+                {
+                    // Query using User Name only
+                }
+
+                if (!string.IsNullOrEmpty(userName) && string.IsNullOrEmpty(noteText))
+                {
+                    // Query using Note Text only
+                }
+
+                return Ok();
+            }
+
+            catch (Exception)
+            {
+                // Error Logging
                 return BadRequest();
-            }
-
-            if (!string.IsNullOrEmpty(userName) && !string.IsNullOrEmpty(noteText))
-            {
-                // Query using both params
-                return Ok();
-            }
-
-            if (string.IsNullOrEmpty(userName) && !string.IsNullOrEmpty(noteText))
-            {
-                // Query using User Name only
-                return Ok();
-            }
-
-            if (!string.IsNullOrEmpty(userName) && string.IsNullOrEmpty(noteText))
-            {
-                // Query using Note Text only
-                return Ok();
-            }
-
-            return BadRequest();
+            } 
         }
 
+        /// <summary>
+        /// Save a new note to the database
+        /// </summary>
+        /// <param name="userId">User ID the request was made from</param>
+        /// <param name="note">Text to be added</param>
+        /// <param name="coordinateX">X GPS Coordinate for the note</param>
+        /// <param name="coordinateY">Y GPS Coordinate for the note</param>
+        /// <returns></returns>
         [HttpPost("SaveNote/{userID, note, coordinateX, coordinateY}")]
         public async Task<IActionResult> SaveNote(int userId, string note, decimal coordinateX, decimal coordinateY)
         {
@@ -73,9 +103,9 @@ namespace LandmarkRemark.Controllers
             {
                 string queryString = string.Format("INSERT INTO [TableName] (userID, note, coordinateX, coordinateY) VALUES ('{0}', '{1}', '{2}', '{3}')", userId, note, coordinateX, coordinateY);
 
-                string connString = ConfigurationExtensions.GetConnectionString(configuration, "DB_ConnectionString");
+                string connectionString = ConfigurationExtensions.GetConnectionString(configuration, "DB_ConnectionString");
 
-                using (SqlConnection connection = new SqlConnection(connString))
+                using (SqlConnection connection = new SqlConnection(connectionString))
                 {
                     SqlCommand command = new SqlCommand(queryString, connection);
                     connection.Open();
@@ -85,10 +115,9 @@ namespace LandmarkRemark.Controllers
             }
             catch (Exception)
             {
-                // Log failure
+                // Error Logging
                 return BadRequest();
             }
         }
-
     }
 }
