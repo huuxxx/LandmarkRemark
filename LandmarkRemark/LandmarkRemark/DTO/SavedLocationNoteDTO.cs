@@ -9,6 +9,7 @@ namespace LandmarkRemark.DTO
     public class SavedLocationNoteDTO
     {
         public int UserID { get; set; }
+        public string UserName { get; set; }
         public decimal CoordinateX { get; set; }
         public decimal CoordinateY { get; set; }
         public string MessageNote { get; set; }

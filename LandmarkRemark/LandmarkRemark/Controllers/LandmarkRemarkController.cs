@@ -14,78 +14,132 @@ namespace LandmarkRemark.Controllers
     public class LandmarkRemarkController : ControllerBase
     {
         private readonly IConfiguration configuration;
+        private readonly string connectionString;
 
         // Constructor Dependency Injection
         public LandmarkRemarkController(IConfiguration configuration)
         {
             this.configuration = configuration;
+            connectionString = ConfigurationExtensions.GetConnectionString(configuration, "DB_ConnectionString");
         }
 
         /// <summary>
-        /// Return all notes of current user
+        /// Return all notes for current user OR all other users, depending on value of param 'selfNotes'
         /// </summary>
         /// <param name="userID">User ID the request was made from</param>
+        /// <param name="selfNotes">If 'true' will return notes for the CURRENT user, if false it will return notes of all OTHER users</param>
         /// <returns></returns>
         [HttpGet("GetMyNotes/{userID}")]
-        public async Task<IActionResult> GetMynotes(int userID)
+        public async Task<IActionResult> GetMynotes(int userID, bool selfNotes)
         {
-            // Return all notes of current user
+            try
+            {
+                string queryString;
 
-            return Ok();
-        }
+                if (selfNotes)
+                {
+                    queryString = string.Format("SELECT CoordinateX, CoordinateY, Note FROM [Table] WHERE ID = {0}", userID);
+                }
+                else 
+                {
+                    queryString = string.Format("SELECT CoordinateX, CoordinateY, Note, UserName FROM [Table] WHERE ID != {0}", userID);
+                }
+                
+                List<SavedLocationNoteDTO> savedLocationNoteDTO = new List<SavedLocationNoteDTO>();
 
-        /// <summary>
-        /// Return all notes of OTHER users
-        /// </summary>
-        /// <param name="userID">User ID the request was made from</param>
-        /// <returns></returns>
-        [HttpGet("GetOthersNotes/{userID}")]
-        public async Task<IActionResult> GetOthersnotes(int userID)
-        {
-            // Return all notes of OTHER users
+                using (SqlConnection connection = new SqlConnection(connectionString))
+                {
+                    connection.Open();
 
-            return Ok();
+                    SqlCommand command = new SqlCommand(queryString, connection);
+
+                    SqlDataReader reader = await command.ExecuteReaderAsync();
+
+                    if (reader.Read())
+                    {
+                        foreach (var LocationNoteDTO in reader)
+                        {
+                            savedLocationNoteDTO.Add((SavedLocationNoteDTO)LocationNoteDTO);
+                        }
+                    }
+
+                    reader.Close();
+                }
+
+                return (IActionResult)savedLocationNoteDTO;
+            }
+
+            catch (Exception)
+            {
+                return BadRequest();
+            }
         }
 
         /// <summary>
         /// Query the database for notes by User Name and/or Note Text
         /// </summary>
         /// <param name="userName">User Name to be queried</param>
-        /// <param name="noteText">User Name to be queried</param>
+        /// <param name="noteTextSearch">Note text to be sarched for</param>
         /// <returns></returns>
         [HttpGet("SearchNotes/{userName, noteText}")]
-        public async Task<IActionResult> SearchNotes(string userName, string noteText)
+        public async Task<IActionResult> SearchNotes(string userName, string noteTextSearch)
         {
             try
             {
-                if (string.IsNullOrEmpty(userName) && string.IsNullOrEmpty(noteText))
+                if (string.IsNullOrEmpty(userName) && string.IsNullOrEmpty(noteTextSearch))
                 {
                     return BadRequest();
                 }
 
-                if (!string.IsNullOrEmpty(userName) && !string.IsNullOrEmpty(noteText))
+                string queryString = "";
+
+                if (!string.IsNullOrEmpty(userName) && !string.IsNullOrEmpty(noteTextSearch))
                 {
-                    // Query using both params
+                    // Query both parameters
+                    queryString = string.Format("SELECT CoordinateX, CoordinateY, Note, UserName FROM [Table] WHERE UserName = {0} AND Note = '%{1}%'", userName, noteTextSearch);
                 }
 
-                if (string.IsNullOrEmpty(userName) && !string.IsNullOrEmpty(noteText))
+                if (string.IsNullOrEmpty(userName) && !string.IsNullOrEmpty(noteTextSearch))
                 {
                     // Query using User Name only
+                    queryString = string.Format("SELECT CoordinateX, CoordinateY, Note, UserName FROM [Table] WHERE UserName = {0}", userName);
                 }
 
-                if (!string.IsNullOrEmpty(userName) && string.IsNullOrEmpty(noteText))
+                if (!string.IsNullOrEmpty(userName) && string.IsNullOrEmpty(noteTextSearch))
                 {
                     // Query using Note Text only
+                    queryString = string.Format("SELECT CoordinateX, CoordinateY, Note, UserName FROM [Table] WHERE Note = '%{0}%'", noteTextSearch);
                 }
 
-                return Ok();
+                SavedLocationNoteDTO savedLocationNoteDTO = new SavedLocationNoteDTO();
+
+                using (SqlConnection connection = new SqlConnection(connectionString))
+                {
+                    connection.Open();
+
+                    SqlCommand command = new SqlCommand(queryString, connection);
+
+                    SqlDataReader reader = await command.ExecuteReaderAsync();
+
+                    if (reader.Read())
+                    {
+                        savedLocationNoteDTO.UserName = reader["UserName"].ToString();
+                        savedLocationNoteDTO.MessageNote = reader["Note"].ToString();
+                        savedLocationNoteDTO.CoordinateX = (int)reader["CoordinateX"];
+                        savedLocationNoteDTO.CoordinateY = (int)reader["CoordinateX"];
+                    }
+
+                    reader.Close();
+                }
+
+                return (IActionResult)savedLocationNoteDTO;
             }
 
             catch (Exception)
             {
                 // Error Logging
                 return BadRequest();
-            } 
+            }
         }
 
         /// <summary>
@@ -101,14 +155,13 @@ namespace LandmarkRemark.Controllers
         {
             try
             {
-                string queryString = string.Format("INSERT INTO [TableName] (userID, note, coordinateX, coordinateY) VALUES ('{0}', '{1}', '{2}', '{3}')", userId, note, coordinateX, coordinateY);
-
-                string connectionString = ConfigurationExtensions.GetConnectionString(configuration, "DB_ConnectionString");
+                string queryString = string.Format("INSERT INTO [Table] (userID, note, coordinateX, coordinateY) VALUES ('{0}', '{1}', '{2}', '{3}')", userId, note, coordinateX, coordinateY);
 
                 using (SqlConnection connection = new SqlConnection(connectionString))
                 {
                     SqlCommand command = new SqlCommand(queryString, connection);
                     connection.Open();
+                    connection.Close();
                 }
 
                 return Ok();
