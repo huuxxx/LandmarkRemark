@@ -28,9 +28,9 @@ namespace LandmarkRemark.Controllers
         /// </summary>
         /// <param name="userID">User ID the request was made from</param>
         /// <param name="selfNotes">If 'true' will return notes for the CURRENT user, if false it will return notes of all OTHER users</param>
-        /// <returns></returns>
-        [HttpGet("GetMyNotes/{userID}")]
-        public async Task<IActionResult> GetMynotes(int userID, bool selfNotes)
+        /// <returns>A list of SavedLocationNoteDTO</returns>
+        [HttpGet("GetNotes/{userID}/{selfNotes}")]
+        public async Task<ActionResult<List<SavedLocationNoteDTO>>> GetNotes(int userID, bool selfNotes)
         {
             try
             {
@@ -55,22 +55,17 @@ namespace LandmarkRemark.Controllers
 
                     SqlDataReader reader = await command.ExecuteReaderAsync();
 
-                    if (reader.Read())
-                    {
-                        foreach (var LocationNoteDTO in reader)
-                        {
-                            savedLocationNoteDTO.Add((SavedLocationNoteDTO)LocationNoteDTO);
-                        }
-                    }
+                    // *** Automapping goes here! ***                    
 
                     reader.Close();
                 }
 
-                return (IActionResult)savedLocationNoteDTO;
+                return savedLocationNoteDTO;
             }
 
             catch (Exception)
             {
+                // Error logging
                 return BadRequest();
             }
         }
@@ -80,8 +75,8 @@ namespace LandmarkRemark.Controllers
         /// </summary>
         /// <param name="userName">User Name to be queried</param>
         /// <param name="noteTextSearch">Note text to be sarched for</param>
-        /// <returns></returns>
-        [HttpGet("SearchNotes/{userName, noteText}")]
+        /// <returns>SavedLocationNoteDTO</returns>
+        [HttpGet("SearchNotes/{userName}/{noteText}")]
         public async Task<IActionResult> SearchNotes(string userName, string noteTextSearch)
         {
             try
@@ -125,8 +120,8 @@ namespace LandmarkRemark.Controllers
                     {
                         savedLocationNoteDTO.UserName = reader["UserName"].ToString();
                         savedLocationNoteDTO.MessageNote = reader["Note"].ToString();
-                        savedLocationNoteDTO.CoordinateX = (int)reader["CoordinateX"];
-                        savedLocationNoteDTO.CoordinateY = (int)reader["CoordinateX"];
+                        savedLocationNoteDTO.CoordinateX = (decimal)reader["CoordinateX"];
+                        savedLocationNoteDTO.CoordinateY = (decimal)reader["CoordinateX"];
                     }
 
                     reader.Close();
@@ -149,9 +144,9 @@ namespace LandmarkRemark.Controllers
         /// <param name="note">Text to be added</param>
         /// <param name="coordinateX">X GPS Coordinate for the note</param>
         /// <param name="coordinateY">Y GPS Coordinate for the note</param>
-        /// <returns></returns>
-        [HttpPost("SaveNote/{userID, note, coordinateX, coordinateY}")]
-        public async Task<IActionResult> SaveNote(int userId, string note, decimal coordinateX, decimal coordinateY)
+        /// <returns>ActionResult Ok</returns>
+        [HttpPost("SaveNote/{userID}/{note}/{coordinateX}/{coordinateY}")]
+        public IActionResult SaveNote(int userId, string note, decimal coordinateX, decimal coordinateY)
         {
             try
             {
