@@ -41,7 +41,7 @@ The UI is only theorised. I would use a React Gatsby template.
 
 The API contains catch blocks for errors, but they are not logged or visualised.
 
-There is no mapping implemented into the GetNotes() API method. I would utilise AutoMapper https://automapper.org/
+There is no mapping implemented into the GetNotes() API method results from the DB. I would utilise AutoMapper https://automapper.org/
 
 # Tools Used
 
